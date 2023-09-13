@@ -2,6 +2,7 @@ import pandas as pd
 from env import user, password, host
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 
 def get_zillow(user=user, password=password, host=host):
