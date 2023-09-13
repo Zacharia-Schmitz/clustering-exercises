@@ -54,6 +54,7 @@ def get_zillow(user=user, password=password, host=host):
     print(f"Total columns: {df.shape[1]}")
     return df
 
+
 def handle_missing_values(df, column_pct, row_pct):
     """
     Drop rows or columns based on the percent of values that are missing.
@@ -76,6 +77,7 @@ def handle_missing_values(df, column_pct, row_pct):
     temp_df.dropna(axis=0, thresh=threshold, inplace=True)
 
     return temp_df
+
 
 def check_columns(df, reports=False, graphs=False):
     """
@@ -102,7 +104,7 @@ def check_columns(df, reports=False, graphs=False):
         numeric = df.select_dtypes(exclude=["object", "category"]).columns.to_list()
         for col in numeric:
             fig, ax = plt.subplots(figsize=(8, 2))
-            sns.histplot(df, x=col, ax=ax, bins=30)
+            sns.histplot(df, x=col, ax=ax)
             ax.set_title(col)
             plt.show()
     data = []
@@ -148,6 +150,7 @@ def check_columns(df, reports=False, graphs=False):
         ],
     )
 
+
 def handle_missing_values(df, column_pct, row_pct):
     """
     Drop rows or columns based on the percent of values that are missing.
@@ -170,6 +173,7 @@ def handle_missing_values(df, column_pct, row_pct):
     temp_df.dropna(axis=0, thresh=threshold, inplace=True)
 
     return temp_df
+
 
 def box_plotter(df):
     """
