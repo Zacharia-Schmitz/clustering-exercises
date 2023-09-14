@@ -3,6 +3,7 @@ from env import user, password, host
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from sklearn.model_selection import train_test_split
 
 
 def get_zillow(user=user, password=password, host=host):
@@ -44,13 +45,21 @@ def get_zillow(user=user, password=password, host=host):
         # cache data locally
         df.to_csv(filename, index=False)
     # sort by column: 'transactiondate' (descending) for dropping dupes keeping recent
-    df = (
-        df.sort_values(["transactiondate"], ascending=[False])
-        .drop_duplicates(subset=["parcelid"])
-        .sort_index()
-    )
+    df = df.drop_duplicates(subset="parcelid", keep="last")
     # no null lat long
+    # Single Family Homes
+    single_fam = [
+        "Single Family Residential",
+        "Condominium",
+        "Residential General",
+        "Manufactured, Modular, Prefabricated Homes",
+        "Mobile Home",
+        "Townhouse",
+    ]
+
+    df = df[df["propertylandusedesc"].isin(single_fam)]
     df = df[df["latitude"].notna()]
+    df = df[df["longitude"].notna()]
     print(f"Total rows: {df.shape[0]}")
     print(f"Total columns: {df.shape[1]}")
     return df
@@ -99,8 +108,8 @@ def check_columns(df, reports=False, graphs=False):
     print(f"Total rows: {df.shape[0]}")
     print(f"Total columns: {df.shape[1]}")
     if reports == True:
-        print(df.info())
-        print(df.describe().T)
+        print(df.info)
+        print(df.describe())
     if graphs == True:
         numeric = df.select_dtypes(exclude=["object", "category"]).columns.to_list()
         for col in numeric:
@@ -172,6 +181,8 @@ def handle_missing_values(df, column_pct, row_pct):
     # Drop rows with too many missing values
     threshold = int(round(row_pct * len(df.columns), 0))
     temp_df.dropna(axis=0, thresh=threshold, inplace=True)
+    print(f"Total rows: {df.shape[0]}")
+    print(f"Total columns: {df.shape[1]}")
 
     return temp_df
 
@@ -206,3 +217,82 @@ def box_plotter(df):
             )
             plt.close()
             continue
+
+
+def encode_columns(df, columns, drop_first=True):
+    """
+    Encode the specified columns of a dataframe using pd.get_dummies.
+
+    Parameters:
+    df (pandas.DataFrame): The input dataframe.
+    columns (list): A list of column names to encode.
+
+    Returns:
+    pandas.DataFrame: The encoded dataframe.
+    """
+    # Encode the specified columns using pd.get_dummies
+    df_encoded = pd.get_dummies(df, columns=columns, drop_first=drop_first)
+
+    return df_encoded
+
+
+def multi_scaler(train, val, test, scaled_features=None, scaler="MM"):
+    """
+    This function takes in 3 dataframes (train, val, test)
+    and scales them using the specified scaler.
+
+    Parameters:
+    train (pandas.DataFrame): The training dataframe.
+    val (pandas.DataFrame): The validation dataframe.
+    test (pandas.DataFrame): The test dataframe.
+    scaled_features (list): A list of column names to scale. If None, all object columns are scaled.
+    scaler (str): The scaler to use. Must be one of "MM" (MinMaxScaler), "Standard" (StandardScaler), or "Robust" (RobustScaler).
+
+    Returns:
+    tuple: A tuple of the scaled dataframes (train_scaled, val_scaled, test_scaled).
+    """
+    if scaled_features is None:
+        # If scaled_features is not defined, scale all numeric columns
+        numeric_cols = train.select_dtypes(include=["number"]).columns.to_list()
+        if len(numeric_cols) == 0:
+            raise ValueError("No numeric columns to scale.")
+        scaled_features = numeric_cols
+
+    if scaler == "MM":
+        scaler_obj = MinMaxScaler()
+    elif scaler == "Standard":
+        scaler_obj = StandardScaler()
+    elif scaler == "Robust":
+        scaler_obj = RobustScaler()
+    else:
+        raise ValueError(
+            "Invalid scaler. Must be one of 'MM', 'Standard', or 'Robust'."
+        )
+
+    # We fit/transform on itself to prevent leakage of one set into the other
+    # Training
+    train_scaled = train.copy()
+    train_scaled[scaled_features] = scaler_obj.fit_transform(train[scaled_features])
+    # Validation
+    val_scaled = val.copy()
+    val_scaled[scaled_features] = scaler_obj.transform(val[scaled_features])
+    # Test
+    test_scaled = test.copy()
+    test_scaled[scaled_features] = scaler_obj.transform(test[scaled_features])
+
+    return train_scaled, val_scaled, test_scaled
+
+
+def split_data(df, random_state=123):
+    """Split into train, validate, test with a 60% train, 20% validate, 20% test"""
+    train_validate, test = train_test_split(df, test_size=0.2, random_state=123)
+    train, validate = train_test_split(train_validate, test_size=0.25, random_state=123)
+
+    print(f"train: {len(train)} ({round(len(train)/len(df)*100)}% of {len(df)})")
+    print(
+        f"validate: {len(validate)} ({round(len(validate)/len(df)*100)}% of {len(df)})"
+    )
+    print(f"test: {len(test)} ({round(len(test)/len(df)*100)}% of {len(df)})")
+    return train, validate, test
+
+
