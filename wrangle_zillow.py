@@ -66,30 +66,6 @@ def get_zillow(user=user, password=password, host=host):
     return df
 
 
-def handle_missing_values(df, column_pct, row_pct):
-    """
-    Drop rows or columns based on the percent of values that are missing.
-
-    Parameters:
-    df (pandas.DataFrame): The input dataframe.
-    prop_required_column (float): The proportion of non-missing values required to keep a column.
-    prop_required_row (float): The proportion of non-missing values required to keep a row.
-
-    Returns:
-    pandas.DataFrame: The dataframe with missing values handled.
-    """
-    temp_df = df
-    # Drop columns with too many missing values
-    threshold = int(round(column_pct * len(df.index), 0))
-    temp_df.dropna(axis=1, thresh=threshold, inplace=True)
-
-    # Drop rows with too many missing values
-    threshold = int(round(row_pct * len(df.columns), 0))
-    temp_df.dropna(axis=0, thresh=threshold, inplace=True)
-
-    return temp_df
-
-
 def check_columns(df, reports=False, graphs=False):
     """
     This function takes a pandas dataframe as input and returns
@@ -246,7 +222,7 @@ def multi_scaler(train, val, test, scaled_features=None, scaler="MM"):
     train (pandas.DataFrame): The training dataframe.
     val (pandas.DataFrame): The validation dataframe.
     test (pandas.DataFrame): The test dataframe.
-    scaled_features (list): A list of column names to scale. If None, all object columns are scaled.
+    scaled_features (list): A list of column names to scale. If None, all numeric columns are scaled.
     scaler (str): The scaler to use. Must be one of "MM" (MinMaxScaler), "Standard" (StandardScaler), or "Robust" (RobustScaler).
 
     Returns:
@@ -270,14 +246,18 @@ def multi_scaler(train, val, test, scaled_features=None, scaler="MM"):
             "Invalid scaler. Must be one of 'MM', 'Standard', or 'Robust'."
         )
 
-    # We fit/transform on itself to prevent leakage of one set into the other
-    # Training
+    # Fit the scaler on the training data
+    scaler_obj.fit(train[scaled_features])
     train_scaled = train.copy()
-    train_scaled[scaled_features] = scaler_obj.fit_transform(train[scaled_features])
-    # Validation
+    train_scaled[scaled_features] = scaler_obj.transform(train[scaled_features])
+
+    # Fit/transofrm the scaler on validate
+    scaler_obj.fit(val[scaled_features])
     val_scaled = val.copy()
     val_scaled[scaled_features] = scaler_obj.transform(val[scaled_features])
-    # Test
+
+    # Fit/transform the scaler on test
+    scaler_obj.fit(test[scaled_features])
     test_scaled = test.copy()
     test_scaled[scaled_features] = scaler_obj.transform(test[scaled_features])
 
