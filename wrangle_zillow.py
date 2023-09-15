@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
 
 
 def get_zillow(user=user, password=password, host=host):
@@ -294,5 +295,3 @@ def split_data(df, random_state=123):
     )
     print(f"test: {len(test)} ({round(len(test)/len(df)*100)}% of {len(df)})")
     return train, validate, test
-
-
